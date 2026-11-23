@@ -2,6 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/services", "destination": "/", "permanent": true },
+    { "source": "/services.html", "destination": "/", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/api/plans", "destination": "https://vanto-connect.vercel.app/api/orgs/public/plans" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

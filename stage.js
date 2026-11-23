@@ -7,6 +7,7 @@
 
   var stage = document.getElementById('stage');
   if (!stage) return;
+  var view = stage.querySelector('.stage-view') || stage; // 3D viewport (ticker bar sits below it)
   var canvas = stage.querySelector('canvas');
   var logEl = stage.querySelector('.stage-log');
 
@@ -321,9 +322,9 @@
     if (!logEl) return;
     var li = document.createElement('li');
     li.textContent = text;
-    logEl.appendChild(li);
-    logItems.push(li);
-    while (logItems.length > 3) { var old = logItems.shift(); if (old.parentNode) old.parentNode.removeChild(old); }
+    logEl.insertBefore(li, logEl.firstChild); // newest first
+    logItems.unshift(li);
+    while (logItems.length > 3) { var old = logItems.pop(); if (old.parentNode) old.parentNode.removeChild(old); }
   }
 
   /* ---------- Labels ---------- */
@@ -380,13 +381,14 @@
 
   var viewW = 0, viewH = 0;
   function resize() {
-    var w = stage.clientWidth, h = stage.clientHeight;
+    var w = view.clientWidth, h = view.clientHeight;
     if (!w || !h) return;
     viewW = w; viewH = h;
     renderer.setSize(w, h, false);
     var aspect = w / h;
+    // world units that must fit; the extra height leaves breathing room above/below the composition
     var needW = isSmall() ? 18.4 : 17.8;
-    var needH = isSmall() ? 15.2 : 14.6;
+    var needH = isSmall() ? 15.8 : 16.2;
     var worldH = Math.max(needH, needW / aspect);
     camera.left = -worldH * aspect / 2; camera.right = worldH * aspect / 2;
     camera.top = worldH / 2; camera.bottom = -worldH / 2;
@@ -414,7 +416,7 @@
   }
 
   window.addEventListener('pointermove', function (e) {
-    var r = stage.getBoundingClientRect();
+    var r = view.getBoundingClientRect();
     var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     var nx = Math.max(-1, Math.min(1, (e.clientX - cx) / (window.innerWidth / 2)));
     var ny = Math.max(-1, Math.min(1, (e.clientY - cy) / (window.innerHeight / 2)));
@@ -546,7 +548,7 @@
 
   canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); stop(); fallback(); }, false);
 
-  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(stage);
+  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(view);
   else window.addEventListener('resize', resize);
   resize();
 
