@@ -31,6 +31,46 @@
       });
       window.addEventListener('resize', function () { if (window.innerWidth > 960) setOpen(false); });
     }
+
+    /* Active-section indicator: a single pill that glides to the current link */
+    var center = nav.querySelector('.nav-center');
+    var indicator = center && center.querySelector('.nav-indicator');
+    var navLinks = center ? Array.prototype.slice.call(center.querySelectorAll('.nav-links > li > a')) : [];
+    var spies = navLinks.map(function (a) {
+      var id = a.getAttribute('data-spy');
+      return { a: a, el: id ? document.getElementById(id) : null };
+    }).filter(function (s) { return s.el; });
+    var fixedActive = navLinks.filter(function (a) { return a.getAttribute('aria-current') === 'page'; })[0] || null;
+    var current = null;
+
+    var place = function (link) {
+      if (!indicator) return;
+      if (!link || window.innerWidth <= 960) { indicator.style.opacity = '0'; return; }
+      var cr = center.getBoundingClientRect(), lr = link.getBoundingClientRect();
+      indicator.style.width = lr.width + 'px';
+      indicator.style.transform = 'translateX(' + (lr.left - cr.left) + 'px)';
+      indicator.style.opacity = '1';
+    };
+    var pick = function () {
+      var active = fixedActive;
+      if (spies.length) {
+        var line = window.innerHeight * 0.35;
+        active = null;
+        spies.forEach(function (s) { if (s.el.getBoundingClientRect().top <= line) active = s.a; });
+        // past the last section (e.g. footer) keep the last one; above the first, none
+      }
+      if (active !== current) {
+        navLinks.forEach(function (a) { a.classList.toggle('is-active', a === active); });
+        current = active;
+      }
+      place(current);
+    };
+    var spyTick = false;
+    var onSpy = function () { if (!spyTick) { spyTick = true; requestAnimationFrame(function () { spyTick = false; pick(); }); } };
+    pick();
+    window.addEventListener('scroll', onSpy, { passive: true });
+    window.addEventListener('resize', onSpy);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(onSpy);
   }
 
   /* ---- Footer year ---- */
