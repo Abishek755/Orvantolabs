@@ -94,9 +94,9 @@
               <table>
                 <thead><tr><th scope="col">Plan</th><th scope="col">Price</th><th scope="col">Billing</th></tr></thead>
                 <tbody>
-                  <tr><td>Starter, Growth, Pro</td><td>As shown on our <a href="index.html#pricing">pricing section</a> (INR or USD)</td><td>Monthly subscription, renews until cancelled</td></tr>
-                  <tr><td>Global Launch License (Founding Lifetime Access)</td><td>$399 USD</td><td>One-time payment</td></tr>
-                  <tr><td>India Launch License (Founding Lifetime Access)</td><td>₹14,999 INR</td><td>One-time payment</td></tr>
+                  <tr><td>Starter, Growth, Pro</td><td>As shown on our <a href="index.html#pricing">pricing section</a> (<span class="inr-only">INR or </span>USD)</td><td>Monthly subscription, renews until cancelled</td></tr>
+                  <tr class="inr-only"><td>India Launch License (Founding Lifetime Access)</td><td>₹14,999 INR</td><td>One-time payment</td></tr>
+                  <tr class="usd-only"><td>Global Launch License (Founding Lifetime Access)</td><td>$399 USD</td><td>One-time payment</td></tr>
                 </tbody>
               </table>
             </div>
@@ -200,5 +200,6 @@
   </footer>
 
   <script src="site.js" defer></script>
+  <script src="js/geo.js" defer></script>
 </body>
 </html>
