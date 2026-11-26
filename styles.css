@@ -805,6 +805,11 @@ html:not(.js) .stage canvas { display: none; }
 .sync-note i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); }
 [data-sync="live"] .sync-note i { background: var(--emerald); }
 [data-currency="INR"] [data-cur="USD"], [data-currency="USD"] [data-cur="INR"] { display: none; }
+/* Strict geo lock (js/geo.js): ₹ INR exists only for visitors in India; no toggle elsewhere. */
+html:not([data-geo="IN"]) [data-cur="INR"],
+html:not([data-geo="IN"]) .inr-only,
+html:not([data-geo="IN"]) .cur-toggle { display: none !important; }
+html[data-geo="IN"] .usd-only { display: none !important; }
 .price .per { font: 500 15px/1 var(--font-body); letter-spacing: 0; color: var(--ink-3); margin-left: 4px; }
 .plan-list li.all { color: var(--ink); font-weight: 600; grid-template-columns: 1fr; }
 
@@ -841,6 +846,8 @@ html:not(.js) .stage canvas { display: none; }
 .launch-option .cur { font: 500 13px/1 var(--font-mono); color: var(--on-dark-3); }
 .launch-option .term { margin-top: 8px; font-size: 13px; color: var(--on-dark-2); }
 .launch-option .btn { margin-top: 18px; }
+.launch-option .custom-title { margin-top: 12px; font: 700 clamp(1.2rem, 1.8vw, 1.45rem)/1.15 var(--font-display); letter-spacing: -0.02em; }
+.launch-custom { background: transparent; }
 @media (max-width: 1040px) { .launch { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .launch-options { grid-template-columns: 1fr; } }
 

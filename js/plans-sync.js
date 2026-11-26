@@ -2,14 +2,18 @@
    Vanto Connect — live plan sync from vanto-admin
    ---------------------------------------------------------------------
    The pricing cards in index.html ship as static HTML (a snapshot of the
-   vanto-admin plans API). On load this script fetches the live plans and
-   re-renders the cards, so price, seat, usage-limit and feature-flag
-   changes made in vanto-admin appear without a redeploy. Any failure
-   (network, CORS, bad payload) is silent: the static snapshot stays.
+   plans API, also the fallback). On load the live plans — prices, seats,
+   usage limits and the feature_list bullets edited in vanto-admin — are
+   re-rendered, so changes appear without a redeploy. Any failure keeps
+   the static snapshot.
 
-   Endpoints, tried in order:
-     1. /api/plans  — same-origin proxy (see "rewrites" in vercel.json)
-     2. https://vanto-connect.vercel.app/api/orgs/public/plans (needs CORS)
+   Data: js/geo.js already fetched https://vanto-connect.vercel.app/api/orgs/public/plans
+   (it carries the visitor's IP country); if that failed, the same-origin
+   /api/plans proxy supplies prices only (vercel.json "rewrites").
+
+   Currency is geo-locked: ₹ INR only inside India (toggle shown, INR by
+   default); everywhere else only $ USD and no toggle. Buttons get their
+   Dodo checkout links from js/checkout-config.js.
    ===================================================================== */
 (function (root, factory) {
   var api = factory();
@@ -18,7 +22,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  // Feature flags shown on the cards, in display order. Flags not listed here are not shown.
+  // Feature flags (fallback when a plan has no feature_list bullets), in display order.
   var FEATURES = [
     ['inbox_media', 'Shared Team Inbox with media'],
     ['templates', 'WhatsApp template sync'],
@@ -62,30 +66,47 @@
     return '$' + (Math.round(v) === v ? String(v) : v.toFixed(2));
   }
   function isLifetime(code) { return /lifetime|founding/i.test(code); }
+  function bullets(list) {
+    return Array.isArray(list) ? list.filter(function (x) { return typeof x === 'string' && x.trim(); }).map(function (x) { return x.trim(); }).slice(0, 15) : [];
+  }
 
-  /* Validate + sort the API payload. Returns null if unusable. */
+  /* Validate + sort the API payload. Returns null if unusable. INR is optional
+     (the API leaves it out for visitors outside India). */
   function normalize(payload) {
     if (!payload || payload.ok === false) return null;
     var list = Array.isArray(payload) ? payload : (payload.tiers || payload.plans || payload.data);
     if (!Array.isArray(list)) return null;
     var tiers = list.filter(function (t) {
-      return t && typeof t.code === 'string' && t.code && typeof t.name === 'string' && t.name &&
-        t.prices && num(t.prices.INR) > 0 && num(t.prices.USD) > 0;
+      return t && typeof t.code === 'string' && t.code && typeof t.name === 'string' && t.name && t.prices && num(t.prices.USD) > 0;
     }).map(function (t, i) {
       return {
         code: t.code.toLowerCase().replace(/[^a-z0-9_-]/g, ''),
         name: t.name,
         tagline: typeof t.tagline === 'string' ? t.tagline : '',
-        prices: { INR: t.prices.INR, USD: t.prices.USD },
+        prices: { INR: num(t.prices.INR) > 0 ? t.prices.INR : null, USD: t.prices.USD },
         popular: t.is_popular === true,
         order: num(t.sort_order) != null ? t.sort_order : i,
         limits: t.limits && typeof t.limits === 'object' ? t.limits : {},
-        features: t.features && typeof t.features === 'object' ? t.features : {}
+        features: t.features && typeof t.features === 'object' ? t.features : {},
+        bullets: bullets(t.feature_list)
       };
     });
     if (!tiers.length) return null;
     tiers.sort(function (a, b) { return a.order - b.order; });
     return tiers;
+  }
+
+  /* One-time launch offer prices from the API (`offers`, or a lifetime-coded tier). */
+  function lifetimeOffer(payload) {
+    var list = [].concat((payload && payload.offers) || [], (payload && payload.tiers) || []);
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i];
+      if (!t || !isLifetime(String(t.code || ''))) continue;
+      var p = t.prices_once || t.prices || {};
+      var out = { INR: num(p.INR) > 0 ? p.INR : null, USD: num(p.USD) > 0 ? p.USD : null };
+      if (out.INR || out.USD) return out;
+    }
+    return null;
   }
 
   function limitRows(tier, shownKeys) {
@@ -97,7 +118,13 @@
     }).join('');
   }
 
-  function renderTier(tier, prev, shownLimits) {
+  function featureItems(tier, prev) {
+    if (tier.bullets.length) {
+      // Bullets edited in vanto-admin (same list as Zoho CRM's Plans & Billing tab).
+      return tier.bullets.map(function (b) {
+        return /^everything in /i.test(b) ? '<li class="all">' + esc(b) + (/[:,]$/.test(b) ? '' : ', plus:') + '</li>' : '<li>' + CHECK + '<span>' + esc(b) + '</span></li>';
+      }).join('');
+    }
     var feats = [];
     if (!prev) feats.push('WhatsApp messaging inside Zoho CRM');
     FEATURES.forEach(function (f) {
@@ -105,24 +132,28 @@
       var before = prev && prev.features[f[0]] === true;
       if (on && !before) feats.push(f[1]);
     });
-    var list = (prev ? '<li class="all">Everything in ' + esc(prev.name) + ', plus:</li>' : '') +
+    return (prev ? '<li class="all">Everything in ' + esc(prev.name) + ', plus:</li>' : '') +
       feats.map(function (f) { return '<li>' + CHECK + '<span>' + esc(f) + '</span></li>'; }).join('');
+  }
+
+  function renderTier(tier, prev, shownLimits) {
+    var inr = tier.prices.INR ? '<span data-cur="INR">' + money(tier.prices.INR, 'INR') + '</span>' : '';
     return '' +
       '<article class="card plan' + (tier.popular ? ' featured' : '') + '" data-plan="' + esc(tier.code) + '">' +
         '<div class="plan-tag"><span class="chip">Monthly</span>' + (tier.popular ? '<span class="chip chip-emerald">Most popular</span>' : '') + '</div>' +
         '<h3>' + esc(tier.name) + '</h3>' +
         (tier.tagline ? '<p class="for">' + esc(tier.tagline) + '</p>' : '') +
         '<div class="price">' +
-          '<span class="amt"><span data-cur="INR">' + money(tier.prices.INR, 'INR') + '</span><span data-cur="USD">' + money(tier.prices.USD, 'USD') + '</span><span class="per">/mo</span></span>' +
-          '<span class="cur">per month · billed in <span data-cur="INR">INR</span><span data-cur="USD">USD</span></span>' +
+          '<span class="amt">' + inr + '<span data-cur="USD">' + money(tier.prices.USD, 'USD') + '</span><span class="per">/mo</span></span>' +
+          '<span class="cur">per month · billed in ' + (tier.prices.INR ? '<span data-cur="INR">INR</span>' : '') + '<span data-cur="USD">USD</span></span>' +
         '</div>' +
-        '<a class="btn ' + (tier.popular ? 'btn-dark' : 'btn-ghost') + ' btn-block" href="contact.html?plan=' + encodeURIComponent(tier.code) + '">Choose ' + esc(tier.name) + ' ' + ARROW + '</a>' +
-        '<ul class="plan-list">' + list + '</ul>' +
+        '<a class="btn ' + (tier.popular ? 'btn-dark' : 'btn-ghost') + ' btn-block" href="contact.html?plan=' + encodeURIComponent(tier.code) + '" data-checkout="' + esc(tier.code) + '" data-cycle="monthly">Choose ' + esc(tier.name) + ' ' + ARROW + '</a>' +
+        '<ul class="plan-list">' + featureItems(tier, prev) + '</ul>' +
         (shownLimits.length ? '<p class="limits-title">Plan limits</p><div class="limits">' + limitRows(tier, shownLimits) + '</div>' : '') +
       '</article>';
   }
 
-  /* Render all monthly tiers (lifetime-coded tiers are handled by the banner). */
+  /* Render all monthly tiers (lifetime-coded tiers are handled by the launch banner). */
   function renderTiers(tiers) {
     var monthly = tiers.filter(function (t) { return !isLifetime(t.code); });
     var shown = LIMITS.map(function (l) { return l[0]; }).filter(function (k) {
@@ -131,7 +162,7 @@
     return monthly.map(function (t, i) { return renderTier(t, i ? monthly[i - 1] : null, shown); }).join('\n');
   }
 
-  return { normalize: normalize, renderTiers: renderTiers, money: money, isLifetime: isLifetime, FEATURES: FEATURES, LIMITS: LIMITS };
+  return { normalize: normalize, renderTiers: renderTiers, lifetimeOffer: lifetimeOffer, money: money, isLifetime: isLifetime, FEATURES: FEATURES, LIMITS: LIMITS };
 });
 
 /* ---------------- Browser runtime ---------------- */
@@ -145,29 +176,51 @@
   var note = section.querySelector('[data-sync-text]');
   var buttons = Array.prototype.slice.call(section.querySelectorAll('[data-set-currency]'));
   var KEY = 'vc-currency';
+  var geo = window.OrvantoGeo || null;
 
-  /* ---- Currency toggle (INR / USD) ---- */
+  function inIndia() {
+    return geo ? geo.inIndia : document.documentElement.getAttribute('data-geo') === 'IN';
+  }
+  function saved() {
+    try { return localStorage.getItem(KEY); } catch (e) { return null; }
+  }
+  /** INR by default inside India (unless the visitor picked USD); USD only elsewhere. */
+  function effective() {
+    if (!inIndia()) return 'USD';
+    return saved() === 'USD' ? 'USD' : 'INR';
+  }
+
   function setCurrency(cur, remember) {
+    if (!inIndia()) cur = 'USD';
     section.setAttribute('data-currency', cur);
     buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set-currency') === cur)); });
     if (remember) { try { localStorage.setItem(KEY, cur); } catch (e) { /* storage unavailable */ } }
+    if (window.OrvantoCheckout) window.OrvantoCheckout.wire(section, cur);
   }
-  var initial = null;
-  try { initial = localStorage.getItem(KEY); } catch (e) { /* storage unavailable */ }
-  if (initial !== 'INR' && initial !== 'USD') {
-    var tz = '';
-    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* older browser */ }
-    initial = /Kolkata|Calcutta/.test(tz) || /-IN$/i.test(navigator.language || '') ? 'INR' : 'USD';
-  }
-  setCurrency(initial, false);
+  setCurrency(effective(), false);
   buttons.forEach(function (b) {
     b.addEventListener('click', function () { setCurrency(b.getAttribute('data-set-currency'), true); });
   });
 
-  /* ---- Live sync ---- */
-  var endpoints = [];
-  if (/^https?:$/.test(location.protocol)) endpoints.push('/api/plans');
-  endpoints.push('https://vanto-connect.vercel.app/api/orgs/public/plans');
+  function apply(payload, live) {
+    var tiers = P.normalize(payload);
+    if (!tiers) throw new Error('unusable payload');
+    // The proxy reports its own (non-Indian) location, so its payload has no ₹ prices —
+    // for a visitor in India keep the static snapshot (which has both) instead.
+    if (!live && inIndia() && tiers.every(function (t) { return !t.prices.INR; })) throw new Error('no INR in proxy payload');
+    var html = P.renderTiers(tiers);
+    if (html && grid) grid.innerHTML = html;
+    var lt = P.lifetimeOffer(payload);
+    if (lt) {
+      Array.prototype.forEach.call(section.querySelectorAll('[data-lt-price]'), function (el) {
+        var cur = el.getAttribute('data-lt-price');
+        if (lt[cur] > 0) el.textContent = P.money(lt[cur], cur);
+      });
+    }
+    section.setAttribute('data-sync', 'live');
+    if (note) note.textContent = live ? 'Live pricing from vanto-admin' : 'Pricing from vanto-admin';
+    setCurrency(effective(), false); // re-wire the new buttons
+  }
 
   function fetchJSON(url) {
     var ctrl = 'AbortController' in window ? new AbortController() : null;
@@ -175,26 +228,23 @@
     return fetch(url, { headers: { Accept: 'application/json' }, credentials: 'omit', signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
-
-  function apply(payload) {
-    var tiers = P.normalize(payload);
-    if (!tiers) throw new Error('unusable payload');
-    var html = P.renderTiers(tiers);
-    if (html && grid) grid.innerHTML = html;
-    // Optional lifetime tier from vanto-admin updates the Founding Lifetime prices
-    var lt = tiers.filter(function (t) { return P.isLifetime(t.code); })[0];
-    if (lt) {
-      section.querySelectorAll('[data-lt-price]').forEach(function (el) {
-        var cur = el.getAttribute('data-lt-price');
-        if (lt.prices[cur] > 0) el.textContent = P.money(lt.prices[cur], cur);
-      });
-    }
-    section.setAttribute('data-sync', 'live');
-    if (note) note.textContent = 'Live plan data from vanto-admin';
+  function viaProxy() {
+    if (!window.fetch || !/^https?:$/.test(location.protocol)) return;
+    // Prices only — the proxy can't tell the visitor's country (geo stays as detected).
+    fetchJSON('/api/plans').then(function (d) { apply(d, false); }).catch(function () { /* keep the static snapshot */ });
   }
 
-  (function attempt(i) {
-    if (i >= endpoints.length || !window.fetch) return; // silent fallback: keep the static snapshot
-    fetchJSON(endpoints[i]).then(apply).catch(function () { attempt(i + 1); });
-  })(0);
+  if (geo) {
+    geo.onChange(function () {
+      var ok = false;
+      if (geo.payload) {
+        try { apply(geo.payload, true); ok = true; } catch (e) { /* fall through */ }
+      }
+      if (!ok) { setCurrency(effective(), false); viaProxy(); }
+    });
+  } else {
+    // geo.js didn't load: fetch directly, then the proxy.
+    if (!window.fetch) return;
+    fetchJSON('https://vanto-connect.vercel.app/api/orgs/public/plans').then(function (d) { apply(d, true); }).catch(viaProxy);
+  }
 })();

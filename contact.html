@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script>document.documentElement.classList.add('js');</script>
+  <script>(function(d){d.classList.add('js');var g='INTL';try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';if(/^Asia\/(Kolkata|Calcutta)$/.test(tz))g='IN';}catch(e){}if(g!=='IN'){var l=navigator.languages||[navigator.language||''];for(var i=0;i<l.length;i++)if(/-IN$/i.test(l[i]||''))g='IN';}d.setAttribute('data-geo',g);})(document.documentElement);</script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -160,7 +160,8 @@
                   </optgroup>
                   <optgroup label="Limited launch offer (one-time, lifetime)">
                     <option data-plan="global" value="Vanto Connect — Global Launch License ($399 USD, one-time)">Vanto Connect — Global Launch License ($399 USD, one-time)</option>
-                    <option data-plan="india" value="Vanto Connect — India Launch License (₹14,999 INR, one-time)">Vanto Connect — India Launch License (₹14,999 INR, one-time)</option>
+                    <option class="inr-only" data-plan="india" value="Vanto Connect — India Launch License (₹14,999 INR, one-time)">Vanto Connect — India Launch License (₹14,999 INR, one-time)</option>
+                    <option data-plan="custom" value="Vanto Connect — Custom license (larger team / custom terms)">Vanto Connect — Custom license (larger team / custom terms)</option>
                   </optgroup>
                   <optgroup label="Existing customers">
                     <option data-plan="support" value="Vanto Connect — Product support">Vanto Connect — Product support</option>
@@ -236,6 +237,7 @@
   </footer>
 
   <script src="site.js" defer></script>
+  <script src="js/geo.js" defer></script>
   <script>
     (function () {
       var form = document.getElementById('contactForm');

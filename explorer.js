@@ -267,7 +267,10 @@
     ['Authentication', 310, 35.65],
     ['Service', 1920, 0]
   ];
-  function inr(v) { return '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  // Illustrative spend figures: ₹ for visitors in India, $ elsewhere (strict geo lock, js/geo.js).
+  function india() { return document.documentElement.getAttribute('data-geo') === 'IN'; }
+  function sym() { return india() ? '₹' : '$'; }
+  function inr(v) { return sym() + v.toLocaleString(india() ? 'en-IN' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
   function renderSpend() {
     var daily = root.querySelector('[data-daily]');
@@ -279,7 +282,7 @@
       [0.25, 0.5, 0.75, 1].forEach(function (f) {
         var s = document.createElement('span');
         s.style.bottom = (f * 100) + '%';
-        s.setAttribute('data-v', '₹' + Math.round(f * max));
+        s.setAttribute('data-v', sym() + Math.round(f * max));
         grid.appendChild(s);
       });
       daily.appendChild(grid);
