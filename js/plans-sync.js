@@ -84,6 +84,7 @@
         name: t.name,
         tagline: typeof t.tagline === 'string' ? t.tagline : '',
         prices: { INR: num(t.prices.INR) > 0 ? t.prices.INR : null, USD: t.prices.USD },
+        annualUSD: t.prices_annual && num(t.prices_annual.USD) > 0 ? t.prices_annual.USD : null,
         popular: t.is_popular === true,
         order: num(t.sort_order) != null ? t.sort_order : i,
         limits: t.limits && typeof t.limits === 'object' ? t.limits : {},
@@ -136,16 +137,19 @@
       feats.map(function (f) { return '<li>' + CHECK + '<span>' + esc(f) + '</span></li>'; }).join('');
   }
 
-  function renderTier(tier, prev, shownLimits) {
+  function renderTier(tier, prev, shownLimits, annualUSD) {
     var inr = tier.prices.INR ? '<span data-cur="INR">' + money(tier.prices.INR, 'INR') + '</span>' : '';
+    var hasAnnual = annualUSD > 0;
     return '' +
-      '<article class="card plan' + (tier.popular ? ' featured' : '') + '" data-plan="' + esc(tier.code) + '">' +
-        '<div class="plan-tag"><span class="chip">Monthly</span>' + (tier.popular ? '<span class="chip chip-emerald">Most popular</span>' : '') + '</div>' +
+      '<article class="card plan' + (tier.popular ? ' featured' : '') + (hasAnnual ? ' has-annual' : '') + '" data-plan="' + esc(tier.code) + '">' +
+        '<div class="plan-tag"><span class="chip"><span data-cycle-show="monthly">Monthly</span>' + (hasAnnual ? '<span data-cycle-show="annual">Annual</span>' : '') + '</span>' + (tier.popular ? '<span class="chip chip-emerald">Most popular</span>' : '') + '</div>' +
         '<h3>' + esc(tier.name) + '</h3>' +
         (tier.tagline ? '<p class="for">' + esc(tier.tagline) + '</p>' : '') +
         '<div class="price">' +
-          '<span class="amt">' + inr + '<span data-cur="USD">' + money(tier.prices.USD, 'USD') + '</span><span class="per">/mo</span></span>' +
-          '<span class="cur">per month · billed in ' + (tier.prices.INR ? '<span data-cur="INR">INR</span>' : '') + '<span data-cur="USD">USD</span></span>' +
+          '<span class="amt"><span data-cycle-show="monthly">' + inr + '<span data-cur="USD">' + money(tier.prices.USD, 'USD') + '</span><span class="per">/mo</span></span>' +
+            (hasAnnual ? '<span data-cycle-show="annual">' + money(annualUSD, 'USD') + '<span class="per">/yr</span></span>' : '') + '</span>' +
+          '<span class="cur" data-cycle-show="monthly">per month · billed in ' + (tier.prices.INR ? '<span data-cur="INR">INR</span>' : '') + '<span data-cur="USD">USD</span></span>' +
+          (hasAnnual ? '<span class="cur" data-cycle-show="annual">per year · billed annually in USD</span>' : '') +
         '</div>' +
         '<a class="btn ' + (tier.popular ? 'btn-dark' : 'btn-ghost') + ' btn-block" href="contact.html?plan=' + encodeURIComponent(tier.code) + '" data-checkout="' + esc(tier.code) + '" data-cycle="monthly">Choose ' + esc(tier.name) + ' ' + ARROW + '</a>' +
         '<ul class="plan-list">' + featureItems(tier, prev) + '</ul>' +
@@ -153,13 +157,21 @@
       '</article>';
   }
 
-  /* Render all monthly tiers (lifetime-coded tiers are handled by the launch banner). */
-  function renderTiers(tiers) {
+  /* Annual USD price for a tier: the Dodo product price from checkout-config
+     (annualPrices), else an annual price the API may publish later. */
+  function annualPrice(tier, annualMap) {
+    var cfg = annualMap && annualMap[tier.code];
+    if (cfg && num(cfg.USD) > 0) return cfg.USD;
+    return num(tier.annualUSD) > 0 ? tier.annualUSD : null;
+  }
+
+  /* Render the recurring tiers (lifetime-coded tiers are handled by the launch banner). */
+  function renderTiers(tiers, annualMap) {
     var monthly = tiers.filter(function (t) { return !isLifetime(t.code); });
     var shown = LIMITS.map(function (l) { return l[0]; }).filter(function (k) {
       return monthly.some(function (t) { return num(t.limits[k]) !== null; });
     });
-    return monthly.map(function (t, i) { return renderTier(t, i ? monthly[i - 1] : null, shown); }).join('\n');
+    return monthly.map(function (t, i) { return renderTier(t, i ? monthly[i - 1] : null, shown, annualPrice(t, annualMap)); }).join('\n');
   }
 
   return { normalize: normalize, renderTiers: renderTiers, lifetimeOffer: lifetimeOffer, money: money, isLifetime: isLifetime, FEATURES: FEATURES, LIMITS: LIMITS };
@@ -175,8 +187,11 @@
   var grid = section.querySelector('[data-plans-grid]');
   var note = section.querySelector('[data-sync-text]');
   var buttons = Array.prototype.slice.call(section.querySelectorAll('[data-set-currency]'));
+  var cycleButtons = Array.prototype.slice.call(section.querySelectorAll('[data-set-cycle]'));
   var KEY = 'vc-currency';
   var geo = window.OrvantoGeo || null;
+  var annualMap = (window.ORVANTO_CHECKOUT && window.ORVANTO_CHECKOUT.annualPrices) || null;
+  var cycle = 'monthly'; // visitor's billing-cycle choice; annual is offered in USD only
 
   function inIndia() {
     return geo ? geo.inIndia : document.documentElement.getAttribute('data-geo') === 'IN';
@@ -190,16 +205,34 @@
     return saved() === 'USD' ? 'USD' : 'INR';
   }
 
+  /** Show the chosen billing cycle (forced to monthly in ₹) and point each plan button at the matching checkout. */
+  function applyCycle() {
+    var cur = section.getAttribute('data-currency') === 'INR' ? 'INR' : 'USD';
+    var c = cur === 'USD' ? cycle : 'monthly';
+    section.setAttribute('data-cycle', c);
+    cycleButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set-cycle') === c)); });
+    if (grid) {
+      Array.prototype.forEach.call(grid.querySelectorAll('.plan [data-checkout]'), function (a) {
+        var card = a.closest('.plan');
+        a.setAttribute('data-cycle', c === 'annual' && card && card.classList.contains('has-annual') ? 'annual' : 'monthly');
+      });
+    }
+    if (window.OrvantoCheckout) window.OrvantoCheckout.wire(section, cur);
+  }
+
   function setCurrency(cur, remember) {
     if (!inIndia()) cur = 'USD';
     section.setAttribute('data-currency', cur);
     buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set-currency') === cur)); });
     if (remember) { try { localStorage.setItem(KEY, cur); } catch (e) { /* storage unavailable */ } }
-    if (window.OrvantoCheckout) window.OrvantoCheckout.wire(section, cur);
+    applyCycle();
   }
   setCurrency(effective(), false);
   buttons.forEach(function (b) {
     b.addEventListener('click', function () { setCurrency(b.getAttribute('data-set-currency'), true); });
+  });
+  cycleButtons.forEach(function (b) {
+    b.addEventListener('click', function () { cycle = b.getAttribute('data-set-cycle') === 'annual' ? 'annual' : 'monthly'; applyCycle(); });
   });
 
   function apply(payload, live) {
@@ -208,7 +241,7 @@
     // The proxy reports its own (non-Indian) location, so its payload has no ₹ prices —
     // for a visitor in India keep the static snapshot (which has both) instead.
     if (!live && inIndia() && tiers.every(function (t) { return !t.prices.INR; })) throw new Error('no INR in proxy payload');
-    var html = P.renderTiers(tiers);
+    var html = P.renderTiers(tiers, annualMap);
     if (html && grid) grid.innerHTML = html;
     var lt = P.lifetimeOffer(payload);
     if (lt) {

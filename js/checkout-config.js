@@ -23,12 +23,33 @@ window.ORVANTO_CHECKOUT = {
   // Pay in the currency displayed on the site (no currency picker at checkout).
   lockCurrency: true,
 
+  // Global (USD) products are live. INR is left empty on purpose: ₹ buttons
+  // keep opening the contact form until India (INR) products exist.
   links: {
-    starter: { monthly: "", annual: "" },
-    growth: { monthly: "", annual: "" },
-    pro: { monthly: "", annual: "" },
-    // Founding Lifetime launch offer (one-time).
+    starter: {
+      monthly: { USD: "https://checkout.dodopayments.com/buy/pdt_0NspmiNxNXEjiqI1XLQX6", INR: "" },
+      annual: { USD: "https://checkout.dodopayments.com/buy/pdt_0Nspn88qqZvGX9cwvsRnt", INR: "" }
+    },
+    growth: {
+      monthly: { USD: "https://checkout.dodopayments.com/buy/pdt_0NssbgFK3ZuPqYjGn4BXp", INR: "" },
+      annual: { USD: "https://checkout.dodopayments.com/buy/pdt_0Nssbv1eFPTilQvvbJ7GA", INR: "" }
+    },
+    pro: {
+      monthly: { USD: "https://checkout.dodopayments.com/buy/pdt_0NsscX8kRI6CpMZp4anVV", INR: "" },
+      annual: { USD: "https://checkout.dodopayments.com/buy/pdt_0Nsscq2fOmYN7gDwjb0l0", INR: "" }
+    },
+    // Founding Lifetime launch offer (one-time) — a custom deal, so it stays
+    // on the contact form ("Request Lifetime Access").
     lifetime: { one_time: "" }
+  },
+
+  // Annual prices shown on the pricing cards — must match the annual Dodo
+  // products above (10 months' price: 2 months free). Annual billing is
+  // offered in USD only; ₹ pricing stays monthly.
+  annualPrices: {
+    starter: { USD: 249.99 },
+    growth: { USD: 490 },
+    pro: { USD: 690 }
   },
 
   // Fallback for buttons without a link yet, and the custom-plan inquiry.

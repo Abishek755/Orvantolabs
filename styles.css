@@ -429,6 +429,8 @@ html:not(.js) .stage canvas { display: none; }
 }
 
 .explorer-stage { perspective: 1800px; }
+/* On phones the frame spans the full width; clip the tilted entrance pose so it can't widen the page */
+@media (max-width: 760px) { .explorer-stage { overflow-x: clip; } }
 .app-frame {
   position: relative; overflow: hidden;
   background: var(--paper); border: 1px solid var(--line-2); border-radius: 18px;
@@ -775,7 +777,7 @@ html:not(.js) .stage canvas { display: none; }
 .plan .for { margin-top: 6px; font-size: 14.5px; color: var(--ink-3); }
 .price { margin-top: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .price .amt { font: 700 clamp(2.4rem, 3.6vw, 3rem)/1 var(--font-display); letter-spacing: -0.035em; color: var(--ink); font-variant-numeric: tabular-nums; }
-.price .cur { font: 500 13px/1 var(--font-mono); color: var(--ink-3); }
+.price .cur { font: 500 13px/1.4 var(--font-mono); color: var(--ink-3); }
 .price-term { margin-top: 8px; font: 500 12.5px/1.4 var(--font-mono); color: var(--emerald-700); }
 .plan .btn { margin-top: 24px; }
 .plan-list { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 11px; }
@@ -801,6 +803,18 @@ html:not(.js) .stage canvas { display: none; }
 .cur-toggle button { border: 0; background: transparent; height: 36px; padding: 0 16px; border-radius: 9px; font: 600 14px/1 var(--font-body); color: var(--ink-3); cursor: pointer; transition: background-color .2s ease, color .2s ease; }
 .cur-toggle button:hover { color: var(--ink); }
 .cur-toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 10px -4px rgba(11, 18, 32, 0.5); }
+/* Billing cycle (Monthly / Annual) — annual is USD-only, so the switch hides while ₹ is shown */
+.cycle-toggle { display: inline-grid; grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-1); }
+.cycle-toggle button { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; height: 36px; padding: 0 14px; border-radius: 9px; font: 600 14px/1 var(--font-body); color: var(--ink-3); cursor: pointer; transition: background-color .2s ease, color .2s ease; }
+.cycle-toggle button:hover { color: var(--ink); }
+.cycle-toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 10px -4px rgba(11, 18, 32, 0.5); }
+.cycle-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; font: 600 11px/1 var(--font-body); color: var(--emerald-800); background: var(--emerald-tint); border: 1px solid rgba(5, 150, 105, 0.25); }
+.cycle-toggle button[aria-pressed="true"] .cycle-badge { color: #A7F3D0; background: rgba(52, 211, 153, 0.14); border-color: rgba(52, 211, 153, 0.35); }
+[data-plans][data-currency="INR"] .cycle-toggle { display: none; }
+[data-plans]:not([data-cycle="annual"]) [data-cycle-show="annual"],
+[data-plans] .plan:not(.has-annual) [data-cycle-show="annual"],
+[data-plans][data-cycle="annual"] .plan.has-annual [data-cycle-show="monthly"] { display: none; }
+.launch-option .price-row .from { align-self: center; font: 500 12px/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--on-dark-3); }
 .sync-note { font: 500 11.5px/1 var(--font-mono); color: var(--ink-3); display: inline-flex; align-items: center; gap: 7px; }
 .sync-note i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); }
 [data-sync="live"] .sync-note i { background: var(--emerald); }

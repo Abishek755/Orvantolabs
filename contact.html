@@ -153,14 +153,13 @@
                 <label for="f-service">I’m interested in</label>
                 <select id="f-service" name="service">
                   <option value="">Select an option</option>
-                  <optgroup label="Monthly plans">
-                    <option data-plan="starter" value="Vanto Connect — Starter (monthly)">Vanto Connect — Starter (monthly)</option>
-                    <option data-plan="growth" value="Vanto Connect — Growth (monthly)">Vanto Connect — Growth (monthly)</option>
-                    <option data-plan="pro" value="Vanto Connect — Pro (monthly)">Vanto Connect — Pro (monthly)</option>
+                  <optgroup label="Plans (monthly or annual)">
+                    <option data-plan="starter" value="Vanto Connect — Starter plan">Vanto Connect — Starter plan</option>
+                    <option data-plan="growth" value="Vanto Connect — Growth plan">Vanto Connect — Growth plan</option>
+                    <option data-plan="pro" value="Vanto Connect — Pro plan">Vanto Connect — Pro plan</option>
                   </optgroup>
                   <optgroup label="Limited launch offer (one-time, lifetime)">
-                    <option data-plan="global" value="Vanto Connect — Global Launch License ($399 USD, one-time)">Vanto Connect — Global Launch License ($399 USD, one-time)</option>
-                    <option class="inr-only" data-plan="india" value="Vanto Connect — India Launch License (₹14,999 INR, one-time)">Vanto Connect — India Launch License (₹14,999 INR, one-time)</option>
+                    <option data-plan="lifetime" value="Vanto Connect — Founding Lifetime Access (custom deal)">Vanto Connect — Founding Lifetime Access (custom deal)</option>
                     <option data-plan="custom" value="Vanto Connect — Custom license (larger team / custom terms)">Vanto Connect — Custom license (larger team / custom terms)</option>
                   </optgroup>
                   <optgroup label="Existing customers">
@@ -247,11 +246,17 @@
       var select = document.getElementById('f-service');
       var btnHTML = btn.innerHTML;
 
-      // Preselect the plan passed from pricing / package buttons (?plan=global)
-      var plan = new URLSearchParams(window.location.search).get('plan');
+      // Preselect the plan passed from pricing buttons (?plan=growth, ?plan=lifetime)
+      var plan = (new URLSearchParams(window.location.search).get('plan') || '').replace(/[^a-z]/gi, '').toLowerCase();
+      if (plan === 'global' || plan === 'india') plan = 'lifetime'; // older launch-licence links
       if (plan) {
-        var opt = select.querySelector('option[data-plan="' + plan.replace(/[^a-z]/gi, '') + '"]');
+        var opt = select.querySelector('option[data-plan="' + plan + '"]');
         if (opt) opt.selected = true;
+      }
+      // Founding Lifetime is a custom deal: start the message for the visitor
+      var msg = document.getElementById('f-msg');
+      if (plan === 'lifetime' && msg && !msg.value) {
+        msg.value = 'Hi, I’d like to request Founding Lifetime Access for our Zoho CRM workspace.\n\nCompany:\nZoho CRM edition:\nNumber of Zoho CRM users:\n';
       }
 
       function showError(msg) {
