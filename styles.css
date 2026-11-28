@@ -803,14 +803,13 @@ html:not(.js) .stage canvas { display: none; }
 .cur-toggle button { border: 0; background: transparent; height: 36px; padding: 0 16px; border-radius: 9px; font: 600 14px/1 var(--font-body); color: var(--ink-3); cursor: pointer; transition: background-color .2s ease, color .2s ease; }
 .cur-toggle button:hover { color: var(--ink); }
 .cur-toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 10px -4px rgba(11, 18, 32, 0.5); }
-/* Billing cycle (Monthly / Annual) — annual is USD-only, so the switch hides while ₹ is shown */
+/* Billing cycle (Monthly / Annual) — offered in INR and USD */
 .cycle-toggle { display: inline-grid; grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-1); }
 .cycle-toggle button { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; height: 36px; padding: 0 14px; border-radius: 9px; font: 600 14px/1 var(--font-body); color: var(--ink-3); cursor: pointer; transition: background-color .2s ease, color .2s ease; }
 .cycle-toggle button:hover { color: var(--ink); }
 .cycle-toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 10px -4px rgba(11, 18, 32, 0.5); }
 .cycle-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; font: 600 11px/1 var(--font-body); color: var(--emerald-800); background: var(--emerald-tint); border: 1px solid rgba(5, 150, 105, 0.25); }
 .cycle-toggle button[aria-pressed="true"] .cycle-badge { color: #A7F3D0; background: rgba(52, 211, 153, 0.14); border-color: rgba(52, 211, 153, 0.35); }
-[data-plans][data-currency="INR"] .cycle-toggle { display: none; }
 [data-plans]:not([data-cycle="annual"]) [data-cycle-show="annual"],
 [data-plans] .plan:not(.has-annual) [data-cycle-show="annual"],
 [data-plans][data-cycle="annual"] .plan.has-annual [data-cycle-show="monthly"] { display: none; }
@@ -1020,3 +1019,36 @@ html[data-geo="IN"] .usd-only { display: none !important; }
 .notfound h1 { margin-top: 18px; font-size: clamp(2.2rem, 5vw, 3.6rem); }
 .notfound p { margin-top: 14px; color: var(--on-dark-2); }
 .notfound .actions { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* ---------- INR checkout modal (Razorpay) ---------- */
+.rzp-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px; background: rgba(9, 13, 22, 0.62); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); opacity: 0; transition: opacity .2s ease; }
+.rzp-overlay.is-open { opacity: 1; }
+.rzp-overlay[hidden] { display: none; }
+.rzp-modal { position: relative; width: 100%; max-width: 440px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--paper); color: var(--ink); border-radius: 20px; border: 1px solid var(--line); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.55); padding: 26px 24px 22px; transform: translateY(8px); transition: transform .25s cubic-bezier(.2, .7, .2, 1); }
+.rzp-overlay.is-open .rzp-modal { transform: none; }
+.rzp-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink-3); font-size: 20px; line-height: 1; cursor: pointer; }
+.rzp-close:hover { color: var(--ink); border-color: var(--line-2); }
+.rzp-modal h2 { font-size: 1.35rem; letter-spacing: -0.02em; padding-right: 40px; }
+.rzp-summary { margin-top: 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--alabaster); border: 1px solid var(--line); }
+.rzp-summary b { font: 650 15px/1.3 var(--font-display); letter-spacing: -0.01em; }
+.rzp-summary span { font: 600 15px/1.3 var(--font-mono); color: var(--ink); white-space: nowrap; }
+.rzp-modal form { margin-top: 18px; display: grid; gap: 14px; }
+.rzp-modal .field input { height: 44px; }
+.rzp-phone { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; }
+.rzp-phone .cc { display: grid; place-items: center; height: 44px; border-radius: 11px; background: var(--mist); border: 1px solid var(--line-2); font: 500 14px var(--font-mono); color: var(--ink-2); }
+.rzp-note { font-size: 12.5px; line-height: 1.55; color: var(--ink-3); }
+.rzp-note a { color: var(--emerald-700); }
+.rzp-msg { display: none; padding: 11px 13px; border-radius: 11px; font-size: 14px; line-height: 1.5; }
+.rzp-msg.err { display: block; background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; }
+.rzp-msg.info { display: block; background: var(--emerald-tint); border: 1px solid rgba(5, 150, 105, 0.25); color: var(--emerald-800); }
+.rzp-msg a { color: inherit; font-weight: 600; }
+.rzp-status { display: none; margin-top: 18px; text-align: center; }
+.rzp-modal.is-status form { display: none; }
+.rzp-modal.is-status .rzp-status { display: block; }
+.rzp-spinner { width: 34px; height: 34px; margin: 6px auto 14px; border-radius: 50%; border: 3px solid var(--emerald-tint); border-top-color: var(--emerald); animation: rzpSpin .8s linear infinite; }
+.rzp-status.done .rzp-spinner { display: none; }
+.rzp-status p { font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
+.rzp-status-body { margin-top: 8px; font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
+.rzp-status-body p + p { margin-top: 8px; }
+@keyframes rzpSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .rzp-spinner { animation-duration: 2s; } .rzp-overlay, .rzp-modal { transition: none; } }

@@ -23,8 +23,8 @@ window.ORVANTO_CHECKOUT = {
   // Pay in the currency displayed on the site (no currency picker at checkout).
   lockCurrency: true,
 
-  // Global (USD) products are live. INR is left empty on purpose: ₹ buttons
-  // keep opening the contact form until India (INR) products exist.
+  // Global (USD) plans check out on Dodo. INR stays empty here on purpose:
+  // ₹ plans check out with Razorpay subscriptions (see `razorpay` below).
   links: {
     starter: {
       monthly: { USD: "https://checkout.dodopayments.com/buy/pdt_0NspmiNxNXEjiqI1XLQX6", INR: "" },
@@ -43,13 +43,26 @@ window.ORVANTO_CHECKOUT = {
     lifetime: { one_time: "" }
   },
 
-  // Annual prices shown on the pricing cards — must match the annual Dodo
-  // products above (10 months' price: 2 months free). Annual billing is
-  // offered in USD only; ₹ pricing stays monthly.
+  // Annual prices shown on the pricing cards (10 months' price: 2 months
+  // free). USD must match the annual Dodo products above; INR must match
+  // the annual Razorpay plans behind vanto-connect's checkout API.
   annualPrices: {
-    starter: { USD: 249.99 },
-    growth: { USD: 490 },
-    pro: { USD: 690 }
+    starter: { USD: 249.99, INR: 4990 },
+    growth: { USD: 490, INR: 14990 },
+    pro: { USD: 690, INR: 24990 }
+  },
+
+  // India (INR) subscriptions — Razorpay Standard Checkout (js/razorpay-checkout.js).
+  // vanto-connect creates the subscription and issues the claim link.
+  razorpay: {
+    enabled: true,
+    checkoutApi: "https://vanto-connect.vercel.app/api/razorpay-checkout",
+    claimStatusApi: "https://vanto-connect.vercel.app/api/razorpay-claim-status",
+    claimUrl: "https://vanto-connect.vercel.app/claim",
+    scriptUrl: "https://checkout.razorpay.com/v1/checkout.js",
+    merchantName: "Orvanto Labs",
+    themeColor: "#10b981",
+    pollSeconds: 15
   },
 
   // Fallback for buttons without a link yet, and the custom-plan inquiry.
